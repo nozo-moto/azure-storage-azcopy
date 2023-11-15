@@ -25,11 +25,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
-	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/Azure/go-autorest/autorest/date"
 	"net"
 	"net/http"
 	"net/url"
@@ -38,6 +33,12 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/go-autorest/autorest/date"
 
 	"github.com/Azure/go-autorest/autorest/adal"
 )
@@ -82,7 +83,7 @@ func newAzcopyHTTPClient() *http.Client {
 				Timeout:   10 * time.Second,
 				KeepAlive: 10 * time.Second,
 				DualStack: true,
-			}).Dial,                   /*Context*/
+			}).Dial, /*Context*/
 			MaxIdleConns:           0, // No limit
 			MaxIdleConnsPerHost:    1000,
 			IdleConnTimeout:        180 * time.Second,
@@ -175,12 +176,12 @@ func (uotm *UserOAuthTokenManager) MSILogin(identityInfo IdentityInfo, persist b
 }
 
 // SecretLogin is a UOTM shell for secretLoginNoUOTM.
-func (uotm *UserOAuthTokenManager) SecretLogin(tenantID, activeDirectoryEndpoint, secret, applicationID string, persist bool) (error) {
+func (uotm *UserOAuthTokenManager) SecretLogin(tenantID, activeDirectoryEndpoint, secret, applicationID string, persist bool) error {
 	oAuthTokenInfo := &OAuthTokenInfo{
-		ServicePrincipalName: true,
+		ServicePrincipalName:    true,
 		Tenant:                  tenantID,
 		ActiveDirectoryEndpoint: activeDirectoryEndpoint,
-		ApplicationID: applicationID,
+		ApplicationID:           applicationID,
 		SPNInfo: SPNInfo{
 			Secret:   secret,
 			CertPath: "",
@@ -201,10 +202,10 @@ func (uotm *UserOAuthTokenManager) CertLogin(tenantID, activeDirectoryEndpoint, 
 	}
 	absCertPath, _ := filepath.Abs(certPath)
 	oAuthTokenInfo := &OAuthTokenInfo{
-		ServicePrincipalName: true,
+		ServicePrincipalName:    true,
 		Tenant:                  tenantID,
 		ActiveDirectoryEndpoint: activeDirectoryEndpoint,
-		ApplicationID: applicationID,
+		ApplicationID:           applicationID,
 		SPNInfo: SPNInfo{
 			Secret:   certPass,
 			CertPath: absCertPath,
@@ -262,7 +263,7 @@ func (uotm *UserOAuthTokenManager) UserLogin(tenantID, activeDirectoryEndpoint s
 		Token:                   *token,
 		Tenant:                  tenantID,
 		ActiveDirectoryEndpoint: activeDirectoryEndpoint,
-		ApplicationID: ApplicationID,
+		ApplicationID:           ApplicationID,
 	}
 	uotm.stashedInfo = &oAuthTokenInfo
 
@@ -461,8 +462,8 @@ func (credInfo *OAuthTokenInfo) Refresh(ctx context.Context) (*adal.Token, error
 			return nil, err
 		}
 		return &adal.Token{
-			AccessToken:  t.Token,
-			ExpiresOn: json.Number(strconv.FormatInt(int64(t.ExpiresOn.Sub(date.UnixEpoch())/time.Second), 10)),
+			AccessToken: t.Token,
+			ExpiresOn:   json.Number(strconv.FormatInt(int64(t.ExpiresOn.Sub(date.UnixEpoch())/time.Second), 10)),
 		}, nil
 	} else {
 		if dcc, ok := tc.(*DeviceCodeCredential); ok {
@@ -516,10 +517,9 @@ func (tsc *TokenStoreCredential) GetToken(_ context.Context, _ policy.TokenReque
 	}
 
 	return azcore.AccessToken{
-		Token: tokenInfo.AccessToken,
+		Token:     tokenInfo.AccessToken,
 		ExpiresOn: tokenInfo.Expires(),
 	}, nil
-
 
 }
 
@@ -555,6 +555,7 @@ func (credInfo *OAuthTokenInfo) GetManagedIdentityCredential() (azcore.TokenCred
 }
 
 func (credInfo *OAuthTokenInfo) GetClientCertificateCredential() (azcore.TokenCredential, error) {
+	return azidentity.NewDefaultAzureCredential(nil)
 	authorityHost, err := getAuthorityURL(credInfo.Tenant, credInfo.ActiveDirectoryEndpoint)
 	if err != nil {
 		return nil, err
@@ -599,10 +600,10 @@ func (credInfo *OAuthTokenInfo) GetClientSecretCredential() (azcore.TokenCredent
 }
 
 type DeviceCodeCredential struct {
-	token adal.Token
+	token       adal.Token
 	aadEndpoint string
-	tenantID string
-	clientID string
+	tenantID    string
+	clientID    string
 }
 
 func (dcc *DeviceCodeCredential) GetToken(ctx context.Context, options policy.TokenRequestOptions) (azcore.AccessToken, error) {
